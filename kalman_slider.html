@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Kalman Filter</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    .slider-container { width: 400px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<h2>Kalman Filter Gaussian Visualization</h2>
+
+<div id="plot" style="width:900px;height:500px;"></div>
+
+<div class="slider-container">
+  <label>μ prior</label>
+  <input type="range" id="mu1" min="-15" max="15" step="0.1" value="0">
+</div>
+
+<div class="slider-container">
+  <label>σ prior</label>
+  <input type="range" id="sigma1" min="0.1" max="15" step="0.1" value="1">
+</div>
+
+<div class="slider-container">
+  <label>μ measurement</label>
+  <input type="range" id="mu2" min="-15" max="15" step="0.1" value="2">
+</div>
+
+<div class="slider-container">
+  <label>σ measurement</label>
+  <input type="range" id="sigma2" min="0.1" max="15" step="0.1" value="1.5">
+</div>
+
+<script>
+// ----- Gaussian -----
+function gaussian(x, mu, sigma) {
+    return (1 / (sigma * Math.sqrt(2 * Math.PI))) *
+           Math.exp(-0.5 * Math.pow((x - mu) / sigma, 2));
+}
+
+// ----- Kalman update -----
+function kalman(mu_p, sigma_p, mu_m, sigma_m) {
+    let k = (sigma_p ** 2) / (sigma_p ** 2 + sigma_m ** 2);
+    let mu_post = mu_p + k * (mu_m - mu_p);
+    let sigma_post = Math.sqrt((1 - k) * sigma_p ** 2);
+    return [mu_post, sigma_post];
+}
+
+// ----- X axis -----
+let x = [];
+for (let i = -20; i <= 20; i += 0.02) {
+    x.push(i);
+}
+
+// ----- compute curves -----
+function compute(mu1, sigma1, mu2, sigma2) {
+
+    let y1 = x.map(v => gaussian(v, mu1, sigma1));
+    let y2 = x.map(v => gaussian(v, mu2, sigma2));
+
+    let [mu3, sigma3] = kalman(mu1, sigma1, mu2, sigma2);
+    let y3 = x.map(v => gaussian(v, mu3, sigma3));
+
+    return {y1, y2, y3};
+}
+
+// ----- initial plot -----
+function draw() {
+    let mu1 = parseFloat(document.getElementById("mu1").value);
+    let sigma1 = parseFloat(document.getElementById("sigma1").value);
+    let mu2 = parseFloat(document.getElementById("mu2").value);
+    let sigma2 = parseFloat(document.getElementById("sigma2").value);
+
+    let data = compute(mu1, sigma1, mu2, sigma2);
+
+    let traces = [
+        {x: x, y: data.y1, name: "Prior", line: {width: 2}},
+        {x: x, y: data.y2, name: "Measurement", line: {width: 2}},
+        {x: x, y: data.y3, name: "Kalman", line: {width: 3}}
+    ];
+
+    Plotly.newPlot("plot", traces, {
+        title: "Kalman Filter Gaussian Fusion",
+        xaxis: {title: "x"},
+        yaxis: {title: "Probability Density"}
+    });
+}
+
+// ----- attach sliders -----
+document.querySelectorAll("input").forEach(slider => {
+    slider.addEventListener("input", draw);
+});
+
+// initial render
+draw();
+</script>
+
+</body>
+</html>
